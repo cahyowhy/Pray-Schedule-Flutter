@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_maps_webservice/places.dart';
 import 'package:intl/intl.dart';
 import 'package:location/location.dart' as GPSLocation;
 import 'package:google_maps_webservice/geocoding.dart';
@@ -110,6 +111,22 @@ String _extractAddressComponents(List<GWCore.AddressComponent> addresses,
   return findOnlyAdministrativeArea
       ? administrativeAddress
       : formatedShortAddress;
+}
+
+Future<PlacesSearchResponse> getNearByMosqueLatLng(
+    double lat, double lng) async {
+  final places = new GoogleMapsPlaces(apiKey: gmapApiKey);
+  GWCore.Location location = GWCore.Location(lat, lng);
+  PlacesSearchResponse placesSearchResponse;
+
+  try {
+    placesSearchResponse =
+        await places.searchNearbyWithRadius(location, 1000, type: 'mosque');
+  } catch (e) {
+    debugPrint(e.toString());
+  }
+
+  return placesSearchResponse;
 }
 
 Future<Map<String, dynamic>> getPlaceByLatLng(double lat, double lng) async {

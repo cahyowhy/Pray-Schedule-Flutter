@@ -2,6 +2,7 @@ import 'package:coba_flutter/component/BoxInfo.dart';
 import 'package:coba_flutter/component/DatePicker.dart';
 import 'package:coba_flutter/component/TabWrapper.dart';
 import 'package:coba_flutter/component/TopBar.dart';
+import 'package:coba_flutter/screen/NearByMosqueScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:location/location.dart';
@@ -45,23 +46,22 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  BuildContext _context;
-
   DateTime _currentDate = DateTime.now();
+  Map<String, String> _prays = {};
   String _placeLong = "Unknown Location";
-  bool _loading = false;
   String _placeShort = "Unknown Location";
+  String _searchLocation = "";
+  bool _loading = false;
   double _lat = 0.0;
   double _lng = 0.0;
   double _qibla = 0.0;
-  Map<String, String> _prays = {};
+  PlacesSearchResponse _placesSearchResponse;
 
   @override
   void initState() {
     super.initState();
 
     Future.delayed(Duration.zero).then((value) {
-      _context = context;
       _getLocationAndPlaces();
     });
   }
@@ -76,23 +76,41 @@ class _MyHomePageState extends State<MyHomePage> {
         double latitude = locationData.latitude;
         double longitude = locationData.longitude;
 
-        getPlaceByLatLng(latitude, longitude).then((data) {
+        Future.wait([
+          getPlaceByLatLng(latitude, longitude),
+          getNearByMosqueLatLng(latitude, longitude)
+        ]).then((List<dynamic> responses) {
+          Map<String, dynamic> data = (responses[0] as Map<String, dynamic>);
+          PlacesSearchResponse placesSearchResponse =
+              (responses[1] as PlacesSearchResponse);
+
+          setState(() {
+            _lat = latitude;
+            _lng = longitude;
+            _placesSearchResponse = placesSearchResponse;
+          });
+
           if (data["succes"]) {
-            _findQiblaPrayer(data["placeName"]);
+            _findPrayAndQibla(data["placeName"], skipLatLng: true);
           }
         });
       });
     }
   }
 
-  Future<void> _findQiblaPrayer(String location) async {
+  Future<void> _findPrayAndQibla(String location,
+      {bool skipLatLng = false}) async {
     Map<String, dynamic> data = await getPrayerTime(
         location, dateFormat(_currentDate, f: "dd-MM-yyyy"));
+    _searchLocation = location;
 
     if (data["success"]) {
       setState(() {
-        _lat = data["latitude"];
-        _lng = data["longitude"];
+        if (!skipLatLng) {
+          _lat = data["latitude"];
+          _lng = data["longitude"];
+        }
+
         _placeShort = data["country"];
         _placeLong = data["address"];
         _qibla = data["qibla_direction"];
@@ -111,12 +129,14 @@ class _MyHomePageState extends State<MyHomePage> {
   void _onChangeDay(day) {
     setState(() {
       _currentDate = DateTime(_currentDate.year, _currentDate.month, day);
+      _findPrayAndQibla(_searchLocation);
     });
   }
 
   void _onChangeMonth(month) {
     setState(() {
       _currentDate = DateTime(_currentDate.year, month, _currentDate.day);
+      _findPrayAndQibla(_searchLocation);
     });
   }
 
@@ -129,8 +149,13 @@ class _MyHomePageState extends State<MyHomePage> {
       types: ["geocode"],
       language: "en",
     ).then((p) {
-      debugPrint(p.terms?.first?.value);
-      _findQiblaPrayer(p.terms?.first?.value);
+      _findPrayAndQibla(p.terms?.first?.value).then((response) {
+        getNearByMosqueLatLng(_lat, _lng).then((PlacesSearchResponse pl) {
+          setState(() {
+            _placesSearchResponse = pl;
+          });
+        });
+      });
     }).catchError((e) => debugPrint(e.toString()));
   }
 
@@ -150,16 +175,8 @@ class _MyHomePageState extends State<MyHomePage> {
             BoxInfo(_currentDate, _placeLong),
             TabsContent(childrens: <Widget>[
               PrayyerScreen(_currentDate, _prays, _onChangeDay),
-              QiblaCompasScreen(
-                  latitude: _lat,
-                  longitude: _lng,
-                  placeName: _placeShort,
-                  qibla: _qibla),
-              Container(
-                  child: Column(children: <Widget>[
-                Text(_placeShort),
-                Icon(Icons.arrow_back)
-              ])),
+              QiblaCompasScreen(_lat, _lng, _qibla, _placeShort),
+              NearByMosqueScreen(_placesSearchResponse)
             ])
           ])),
     );

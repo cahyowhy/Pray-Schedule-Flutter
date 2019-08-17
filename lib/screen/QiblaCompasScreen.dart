@@ -11,8 +11,8 @@ class QiblaCompasScreen extends StatefulWidget {
   final double qibla;
   final String placeName;
 
-  QiblaCompasScreen(
-      {Key key, this.latitude, this.longitude, this.qibla, this.placeName})
+  QiblaCompasScreen(this.latitude, this.longitude, this.qibla, this.placeName,
+      {Key key})
       : super(key: key);
 
   @override
