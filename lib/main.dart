@@ -5,14 +5,12 @@ import 'package:coba_flutter/component/TopBar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:location/location.dart';
-import 'package:provider/provider.dart';
 import 'package:google_maps_webservice/places.dart';
 import 'package:flutter_google_places/flutter_google_places.dart';
 
 import 'package:coba_flutter/screen/QiblaCompasScreen.dart';
 import 'package:coba_flutter/screen/PrayyerScreen.dart';
 
-import './state.dart';
 import './util.dart';
 
 void main() => runApp(MyApp());
@@ -29,10 +27,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.green,
       ),
-      home: ChangeNotifierProvider<StateProvider>(
-        builder: (_) => StateProvider(),
-        child: MyHomePage(),
-      ),
+      home: MyHomePage(),
     );
   }
 }
@@ -52,6 +47,15 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   BuildContext _context;
 
+  DateTime _currentDate = DateTime.now();
+  String _placeLong = "Unknown Location";
+  bool _loading = false;
+  String _placeShort = "Unknown Location";
+  double _lat = 0.0;
+  double _lng = 0.0;
+  double _qibla = 0.0;
+  Map<String, String> _prays = {};
+
   @override
   void initState() {
     super.initState();
@@ -63,10 +67,10 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   _getLocationAndPlaces() {
-    final stateProvider = Provider.of<StateProvider>(_context);
-
-    if (!stateProvider.getLoading()) {
-      stateProvider.setLoading(true);
+    if (!_loading) {
+      setState(() {
+        _loading = true;
+      });
 
       getLocation().then((LocationData locationData) {
         double latitude = locationData.latitude;
@@ -82,19 +86,19 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _findQiblaPrayer(String location) async {
-    final stateProvider = Provider.of<StateProvider>(_context);
-
     Map<String, dynamic> data = await getPrayerTime(
-        location, dateFormat(stateProvider.getCurrent(), f: "dd-MM-yyyy"));
+        location, dateFormat(_currentDate, f: "dd-MM-yyyy"));
 
     if (data["success"]) {
-      stateProvider.setProperties(
-          data["latitude"],
-          data["longitude"],
-          data["country"],
-          data["address"],
-          data["qibla_direction"],
-          data["items"], false);
+      setState(() {
+        _lat = data["latitude"];
+        _lng = data["longitude"];
+        _placeShort = data["country"];
+        _placeLong = data["address"];
+        _qibla = data["qibla_direction"];
+        _prays = data["items"];
+        _loading = false;
+      });
     }
   }
 
@@ -104,51 +108,56 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  _handlePressButton() {
+  void _onChangeDay(day) {
+    setState(() {
+      _currentDate = DateTime(_currentDate.year, _currentDate.month, day);
+    });
+  }
+
+  void _onChangeMonth(month) {
+    setState(() {
+      _currentDate = DateTime(_currentDate.year, month, _currentDate.day);
+    });
+  }
+
+  void _handlePressButton() {
     PlacesAutocomplete.show(
       context: context,
       apiKey: gmapApiKey,
       onError: onError,
       mode: Mode.fullscreen,
+      types: ["geocode"],
       language: "en",
     ).then((p) {
-      _findQiblaPrayer(p.description);
+      debugPrint(p.terms?.first?.value);
+      _findQiblaPrayer(p.terms?.first?.value);
     }).catchError((e) => debugPrint(e.toString()));
   }
 
   @override
   Widget build(BuildContext context) {
-    final stateProvider = Provider.of<StateProvider>(context);
-    DateTime currentDate = stateProvider.getCurrent();
-    String placeLong = stateProvider.getPlaceLong();
-    bool loading = stateProvider.getLoading();
-    String placeShort = stateProvider.getPlaceShort();
-    double lat = stateProvider.getLat();
-    double lng = stateProvider.getLng();
-    double qibla = stateProvider.getQibla();
-
     return Scaffold(
       backgroundColor: StyleRule.colorBody,
       body: Container(
           padding: EdgeInsets.all(8.0),
           child: ListView(children: <Widget>[
             TopBar(
-                loading: loading,
-                title: placeShort,
+                loading: _loading,
+                title: _placeShort,
                 fnBtnGps: _getLocationAndPlaces,
                 fnBtnSearch: _handlePressButton),
-            DatePicker(),
-            BoxInfo(currentDate, placeLong),
+            DatePicker(_currentDate, _onChangeDay, _onChangeMonth),
+            BoxInfo(_currentDate, _placeLong),
             TabsContent(childrens: <Widget>[
-              PrayyerScreen(),
+              PrayyerScreen(_currentDate, _prays, _onChangeDay),
               QiblaCompasScreen(
-                  latitude: lat,
-                  longitude: lng,
-                  placeName: placeShort,
-                  qibla: qibla),
+                  latitude: _lat,
+                  longitude: _lng,
+                  placeName: _placeShort,
+                  qibla: _qibla),
               Container(
                   child: Column(children: <Widget>[
-                Text(placeShort),
+                Text(_placeShort),
                 Icon(Icons.arrow_back)
               ])),
             ])

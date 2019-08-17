@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import '../util.dart';
 
 class TopBar extends StatelessWidget {
-  String title;
-  Function fnBtnGps;
-  Function fnBtnSearch;
-  bool loading;
+  final String title;
+  final Function fnBtnGps;
+  final Function fnBtnSearch;
+  final bool loading;
 
   TopBar({Key key, this.title, this.fnBtnGps, this.fnBtnSearch, this.loading})
       : super(key: key);

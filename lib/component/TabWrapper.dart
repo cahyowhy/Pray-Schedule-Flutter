@@ -35,7 +35,7 @@ class TabsContentState extends State<TabsContent>
       Tab(text: "Masjid")
     ];
 
-    Widget tabBar = Padding(
+    Widget tabBar = Container(
         padding: EdgeInsets.symmetric(horizontal: 12.0),
         child: TabBar(
           indicatorWeight: 3,

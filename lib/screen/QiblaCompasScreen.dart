@@ -55,8 +55,9 @@ class _QiblaCompasScreenState extends State<QiblaCompasScreen> {
     bool difLat = oldWidget.latitude != widget.longitude;
     bool difLng = oldWidget.longitude != widget.longitude;
     bool difPlace = oldWidget.placeName != widget.placeName;
+    bool difQibla = oldWidget.qibla != widget.qibla;
 
-    if (difLat && difLng && difPlace) {
+    if (difLat && difLng && difPlace && difQibla) {
       _updateMap();
     }
 
@@ -101,7 +102,9 @@ class _QiblaCompasScreenState extends State<QiblaCompasScreen> {
         _controller.complete(controller);
 
         _simpleFlutterCompass.check().then((result) {
-          _hasAccelerometer = result;
+          setState(() {
+            _hasAccelerometer = result;
+          });
 
           if (result) {
             _simpleFlutterCompass.setListener(_streamListener);
@@ -111,9 +114,9 @@ class _QiblaCompasScreenState extends State<QiblaCompasScreen> {
               content: new Text("Hardware not avalaible"),
             ));
           }
-        });
 
-        _updateMap();
+          _updateMap();
+        });
       },
     );
 
@@ -139,7 +142,6 @@ class _QiblaCompasScreenState extends State<QiblaCompasScreen> {
 
     return Container(
         padding: EdgeInsets.all(8.0),
-        margin: EdgeInsets.only(top: 12),
         decoration: commonBoxDecoration,
         child: Stack(children: <Widget>[gmap, compassWrapper]));
   }

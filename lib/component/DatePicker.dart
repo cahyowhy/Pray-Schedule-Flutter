@@ -1,26 +1,33 @@
 import 'package:flutter/material.dart';
 import '../util.dart';
-import 'package:provider/provider.dart';
-import '../state.dart';
 
 class DatePicker extends StatefulWidget {
+  DateTime current;
+  Function(int) fnChangeDay;
+  void Function(dynamic) fnChangeMonth;
+
+  DatePicker(this.current, this.fnChangeDay, this.fnChangeMonth, {Key key})
+      : super(key: key);
+
   @override
-  _DatePickerState createState() => _DatePickerState();
+  _DatePickerState createState() =>
+      _DatePickerState(fnChangeDay, fnChangeMonth);
 }
 
 class _DatePickerState extends State<DatePicker> {
   bool _showDatePicker = true;
+  Function(int) _fnChangeDay;
+  void Function(dynamic) _fnChangeMonth;
+
+  _DatePickerState(this._fnChangeDay, this._fnChangeMonth, {Key key});
 
   @override
   Widget build(BuildContext context) {
-    final stateProvider = Provider.of<StateProvider>(context);
-    var currentDate = stateProvider.getCurrent();
-
     List<DropdownMenuItem> renderDropdownMonth() {
       List<DropdownMenuItem> dropdowns = [];
 
       for (int i = 1; i <= 12; i++) {
-        DateTime current = DateTime(DateTime.now().year, i, 1);
+        DateTime current = DateTime(widget.current.year, i, 1);
         Text month =
             renderText(dateFormat(current), color: StyleRule.titleTextColor);
 
@@ -41,24 +48,24 @@ class _DatePickerState extends State<DatePicker> {
       for (int i = 0; i <= count; i++) {
         DateTime current = new DateTime(now.year, month, i + 1);
 
-        Color colorButton = currentDate.day == i + 1
+        Color colorButton = widget.current.day == i + 1
             ? StyleRule.colorPrimaryYoung
             : StyleRule.colorgreyMain;
 
-        Color colorText = currentDate.day == i + 1
+        Color colorText = widget.current.day == i + 1
             ? StyleRule.colorPrimaryDark
             : StyleRule.titleTextColor;
 
         Text textbutton = renderText(dateFormat(current, f: 'dd'),
             color: colorText,
-            fw: currentDate.day == i + 1 ? FontWeight.w900 : null);
+            fw: widget.current.day == i + 1 ? FontWeight.w900 : null);
 
         Widget dateButton = ButtonTheme(
             minWidth: 36,
             height: 36,
             child: RaisedButton(
                 color: colorButton,
-                onPressed: () => stateProvider.onChangeDay(i + 1),
+                onPressed: () => _fnChangeDay((i + 1)),
                 child: textbutton,
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
@@ -78,9 +85,9 @@ class _DatePickerState extends State<DatePicker> {
     Widget dropdownMonth = DropdownButtonHideUnderline(
         child: DropdownButton(
             iconSize: StyleRule.iconSize,
-            onChanged: stateProvider.onChangeMonth,
+            onChanged: _fnChangeMonth,
             items: renderDropdownMonth(),
-            value: currentDate.month));
+            value: widget.current.month));
 
     return Container(
       decoration: commonBoxDecoration,
@@ -121,7 +128,7 @@ class _DatePickerState extends State<DatePicker> {
                   padding: EdgeInsets.symmetric(vertical: 12),
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    children: renderDateByMonth(currentDate.month),
+                    children: renderDateByMonth(widget.current.month),
                   ),
                 )
               : Container()
